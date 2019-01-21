@@ -180,6 +180,10 @@ class API(object):
                 return False
         else:
             self.logger.error("Request returns {} error!".format(response.status_code))
+            response_data = json.loads(response.text)
+            if "feedback_required" in str(response_data.get('message')):
+                self.logger.error("ATTENTION!: `feedback_required`, your action could have been blocked")
+                return "feedback_required"
             if response.status_code == 429:
                 sleep_minutes = 5
                 self.logger.warning(
@@ -254,8 +258,8 @@ class API(object):
         })
         return self.send_request('qe/expose/', data)
 
-    def upload_photo(self, photo, caption=None, upload_id=None):
-        return upload_photo(self, photo, caption, upload_id)
+    def upload_photo(self, photo, caption=None, upload_id=None, from_video=False):
+        return upload_photo(self, photo, caption, upload_id, from_video)
 
     def download_photo(self, media_id, filename, media=False, folder='photos'):
         return download_photo(self, media_id, filename, media, folder)
@@ -269,8 +273,8 @@ class API(object):
     def download_video(self, media_id, filename, media=False, folder='video'):
         return download_video(self, media_id, filename, media, folder)
 
-    def configure_video(self, upload_id, video, thumbnail, caption=''):
-        return configure_video(self, upload_id, video, thumbnail, caption)
+    def configure_video(self, upload_id, video, thumbnail, width, height, duration, caption=''):
+        return configure_video(self, upload_id, video, thumbnail, width, height, duration, caption)
 
     def edit_media(self, media_id, captionText=''):
         data = self.json_data({'caption_text': captionText})
@@ -283,9 +287,9 @@ class API(object):
         return self.send_request(url, data)
 
     def media_info(self, media_id):
-        data = self.json_data({'media_id': media_id})
+        # data = self.json_data({'media_id': media_id})
         url = 'media/{media_id}/info/'.format(media_id=media_id)
-        return self.send_request(url, data)
+        return self.send_request(url)
 
     def archive_media(self, media, undo=False):
         action = 'only_me' if not undo else 'undo_only_me'
@@ -744,4 +748,67 @@ class API(object):
     def search_location(self, query='', lat=None, lng=None):
         url = 'fbsearch/places/?rank_token={rank_token}&query={query}&lat={lat}&lng={lng}'
         url = url.format(rank_token=self.rank_token, query=query, lat=lat, lng=lng)
+        return self.send_request(url)
+
+    def get_user_reel(self, user_id):
+        url = 'feed/user/{}/reel_media/'.format(user_id)
+        return self.send_request(url)
+
+    def get_user_stories(self, user_id):
+        url = 'feed/user/{}/story/'.format(user_id)
+        return self.send_request(url)
+
+    def get_self_story_viewers(self, story_id):
+
+        url = 'media/{}/list_reel_media_viewer/?supported_capabilities_new={}'.format(story_id,
+                                                                                      config.SUPPORTED_CAPABILITIES)
+        return self.send_request(url)
+
+    def get_tv_suggestions(self):
+        url = 'igtv/tv_guide/'
+        return self.send_request(url)
+
+    def get_hashtag_stories(self, hashtag):
+        url = 'tags/{}/story/'.format(hashtag)
+        return self.send_request(url)
+
+    def follow_hashtag(self, hashtag):
+        data = self.json_data({})
+        url = 'tags/follow/{}/'.format(hashtag)
+        return self.send_request(url, data)
+
+    def unfollow_hashtag(self, hashtag):
+        data = self.json_data({})
+        url = 'tags/unfollow/{}/'.format(hashtag)
+        return self.send_request(url, data)
+
+    def get_tags_followed_by_user(self, user_id):
+        url = 'users/{}/following_tags_info/'.format(user_id)
+        return self.send_request(url)
+
+    def get_hashtag_sections(self, hashtag):
+        data = self.json_data({'supported_tabs': "['top','recent','places']", 'include_persistent': 'true'})
+        url = 'tags/{}/sections/'.format(hashtag)
+        return self.send_request(url, data)
+
+    def get_media_insight(self, media_id):
+        url = 'insights/media_organic_insights/{}/?ig_sig_key_version={}'.format(media_id, config.IG_SIG_KEY)
+        return self.send_request(url)
+
+    def get_self_insight(self):
+        url = 'insights/account_organic_insights/?show_promotions_in_landing_page=true&first={}'.format()  # todo
+        return self.send_request(url)
+
+    def save_media(self, media_id):
+        data = self.json_data()
+        url = 'media/{}/save/'.format(media_id)
+        return self.send_request(url, data)
+
+    def unsave_media(self, media_id):
+        data = self.json_data()
+        url = 'media/{}/unsave/'.format(media_id)
+        return self.send_request(url, data)
+
+    def get_saved_medias(self):
+        url = 'feed/saved/'
         return self.send_request(url)
